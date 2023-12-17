@@ -1,3 +1,11 @@
+# What's Different in this Fork
+
+- Using Opus instead of 32k MP3.
+- Using `Studio-B UK`.
+- Creates a concat of all the files into One.
+- Creates Folder where all the files are.
+- Creates Per Text File based on the First Line in `text.txt`.
+
 # WaveNet
 
 Simple scripts to generate audio from text using Google Cloud and WaveNets
