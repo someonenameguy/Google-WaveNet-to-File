@@ -3,6 +3,9 @@ import os
 import sys
 import ffmpeg
 import string
+import multiprocessing
+from functools import partial
+from google.cloud import texttospeech
 
 # speak stuff
 speak_rate = 1.3
@@ -29,6 +32,11 @@ def synthesize_text(text, client):
 
   return response.audio_content
 
+def synth_text_speech(args):
+    i,line = args
+    client = texttospeech.TextToSpeechClient()
+    audio = synthesize_text(line, client)
+    write_to_file(audio, str(i))
 
 def write_to_file(audio, name):
     # The response's audio_content is binary.
@@ -49,7 +57,8 @@ def concat_oggs(oggs, output):
 def trim_to_nearest_punctuation(input_str):
     # Set of punctuation marks
     punctuation_set = set(string.punctuation)
-
+    if len(input_str.split()) < 20:
+        return input_str
     # Iterate through the characters to find the nearest punctuation
     for i, char in enumerate(input_str):
         if char in punctuation_set:
@@ -73,7 +82,6 @@ if __name__ == '__main__':
     credential = os.path.join(pwd, "credentials", credential)
     print("Found credential file", credential)
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credential
-    from google.cloud import texttospeech
     client = texttospeech.TextToSpeechClient()
 
   # open text file as a list of lines
@@ -93,7 +101,7 @@ if __name__ == '__main__':
   
   # values to be used later
   oggsname=[]
-  title=trim_to_nearest_punctuation(content[0])
+  title=trim_to_nearest_punctuation(content[0]).replace(':',' -')
   
   # create and move in a new folder
   if not os.path.exists(title):
@@ -102,7 +110,11 @@ if __name__ == '__main__':
   
   # download every line of text into a numbered ogg
   for i, line in enumerate(content):
-    audio = synthesize_text(line, client)
-    write_to_file(audio, str(i))
     oggsname.append(str(i) + '.ogg')
+  
+  with multiprocessing.Pool() as pool:
+    pool.map(synth_text_speech, enumerate(content))
+    
   concat_oggs(oggsname, title+'.ogg')
+  
+  
