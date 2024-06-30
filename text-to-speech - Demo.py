@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 import os
+import re
 import sys
 import ffmpeg
 import string
 import multiprocessing
-from functools import partial
-from google.cloud import texttospeech
 
 # speak stuff
 speak_rate = 1.3
@@ -71,21 +70,11 @@ if __name__ == '__main__':
 
   # get the credentials
   pwd = os.getcwd()
-  credential = ""
-  for f in os.listdir("./credentials/"):
-    if ".json" in f:
-      credential = f
-  if credential == "":
-    print("No credentials json found in 'credentials' dir")
-    quit()
-  else:
-    credential = os.path.join(pwd, "credentials", credential)
-    print("Found credential file", credential)
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credential
-    client = texttospeech.TextToSpeechClient()
 
   # open text file as a list of lines
-  with open("text.txt") as f:
+  textFile=input("Enter Filename: ")
+  textFile = re.sub("\.te*?xt","",textFile) + ".txt"
+  with open(textFile) as f:
     content = f.readlines()
 
   # remove whitespace characters like `\n` at the end of each line
@@ -93,6 +82,21 @@ if __name__ == '__main__':
 
   # remove empty lines
   content = [x for x in content if len(x) > 0]
+  
+  # Chunks of 2500 char
+  tent, length, contemp
+  for x in content:
+    length += len(x)
+    if length > 2500:
+      tent.append(contemp)
+      contemp = x
+      length = len(x)
+    else:
+      contemp += " " + x
+  tent.append(contemp)
+  content = contemp
+  contemp, tent, length = None,None,None
+  
 
   # enter/create an output folder
   if not os.path.exists('Outputs'):
@@ -101,7 +105,7 @@ if __name__ == '__main__':
   
   # values to be used later
   oggsname=[]
-  title=trim_to_nearest_punctuation(content[0]).replace(':',' -')
+  title=input("Enter Title: ")
   
   # create and move in a new folder
   if not os.path.exists(title):
