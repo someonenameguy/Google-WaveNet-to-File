@@ -79,6 +79,9 @@ if __name__ == '__main__':
   # remove empty lines
   content = [x for x in content if len(x) > 0]
   
+  # remove non-worded line breakers
+  content = [x for x in content if re.search("\w", x)]
+  
   # Chunks of 2500 char
   tent, length, contemp
   for x in content:
