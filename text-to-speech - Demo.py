@@ -3,38 +3,47 @@ import os
 import re
 import sys
 import ffmpeg
-import string
 import multiprocessing
+import requests
+import base64
 
 # speak stuff
-speak_rate = 1.3
+speak_rate = 1
+AudioEncoding = "OGG_OPUS"
+effectsProfileId = "headphone-class-device"
+pitch = 0
 
-
-def synthesize_text(text, client):
-  """Synthesizes speech from the input string of text."""
-
-  # input format
-  input_text = texttospeech.SynthesisInput(text=text)
-
+def synthesize_text(text, token):
+  # Synthesizes speech from the input string of text.
+  url = 'https://texttospeech.googleapis.com/v1beta1/text:synthesize&token=' + str(token)
+  mainJson = {
+      "input": {
+        "text": text
+      },
+      "voice": {
+        "languageCode": "en-US",
+        "name": "en-US-Journey-O"
+      },
+      "audioConfig": {
+        "audioEncoding": AudioEncoding,
+        "pitch": pitch,
+        "speakingRate": speak_rate,
+        "effectsProfileId": [
+          effectsProfileId
+        ]
+      }
+    }
+  
   # Note: the voice can also be specified by name.
   # Names of voices can be retrieved with client.list_voices().
-  voice = texttospeech.VoiceSelectionParams(
-    language_code='en-GB',
-    name='en-GB-Neural2-B')
-
-  audio_config = texttospeech.AudioConfig(
-    audio_encoding=texttospeech.AudioEncoding.OGG_OPUS,
-    speaking_rate=speak_rate)
-
-  response = client.synthesize_speech(
-    request={"input": input_text, "voice": voice, "audio_config": audio_config})
-
-  return response.audio_content
+  
+  responseJson = requests.post(url, json = mainJson)
+  
+  return base64.b64decode(str(responseJson.audioContent))
 
 def synth_text_speech(args):
     i,line = args
-    client = texttospeech.TextToSpeechClient()
-    audio = synthesize_text(line, client)
+    audio = synthesize_text(line, token)
     write_to_file(audio, str(i))
 
 def write_to_file(audio, name):
@@ -52,19 +61,6 @@ def concat_oggs(oggs, output):
     for ogg in oggs:
       input_args.append(ffmpeg.input('RAW/'+ogg))
     ffmpeg.concat(*input_args, v=0, a=1).output(output).run()
-
-def trim_to_nearest_punctuation(input_str):
-    # Set of punctuation marks
-    punctuation_set = set(string.punctuation)
-    if len(input_str.split()) < 20:
-        return input_str
-    # Iterate through the characters to find the nearest punctuation
-    for i, char in enumerate(input_str):
-        if char in punctuation_set:
-            return input_str[:i]
-
-    # If no punctuation is found, return the original string
-    return input_str
 
 if __name__ == '__main__':
 
@@ -115,6 +111,8 @@ if __name__ == '__main__':
   # download every line of text into a numbered ogg
   for i, line in enumerate(content):
     oggsname.append(str(i) + '.ogg')
+  
+  global token = input("Enter Token: ")
   
   with multiprocessing.Pool() as pool:
     pool.map(synth_text_speech, enumerate(content))
